@@ -1,0 +1,143 @@
+/* ==========================================================================
+   Responsive behaviour
+   Desktop  ≥1200px    full layout
+   Tablet   768–1199px collapsible sidebar, table scrolls horizontally
+   Mobile   <768px     icon-only sidebar, table rows become cards
+   ========================================================================== */
+
+/* ---------------- Tablet ---------------- */
+@media (max-width: 1199px) {
+  .topbar { padding: 12px 24px; }
+  .topbar__toggle { display: inline-grid; }
+  .main { padding: 20px 24px 32px; }
+  .profile__text, .profile__chevron { display: none; }
+  .search__input { width: 240px; }
+  .table-wrap { scroll-snap-type: x proximity; }
+}
+
+/* Icon rail: collapsed on tablet (user toggle), always on mobile. The rule
+   block is repeated, not shared with JS, so the rail paints correctly before any script runs. */
+@media (min-width: 768px) and (max-width: 1199px) {
+  html.sb-collapsed { --sidebar-current: var(--sidebar-rail-w); }
+  html.sb-collapsed .sidebar { padding: 20px 12px; }
+  html.sb-collapsed .sidebar__brand { justify-content: center; padding: 0; }
+  html.sb-collapsed .sidebar__brand-name,
+  html.sb-collapsed .pro-card { display: none; }
+  html.sb-collapsed .nav__link { justify-content: center; padding: 0; }
+  html.sb-collapsed .nav__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  html.sb-collapsed .nav__badge {
+    position: absolute; top: 4px; right: 4px;
+    min-width: 18px; height: 16px; padding: 0 4px; font-size: 10px;
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
+  html.sb-collapsed .nav__link.is-active .nav__badge { box-shadow: 0 0 0 2px #fff; }
+}
+
+/* ---------------- Mobile ---------------- */
+@media (max-width: 767px) {
+  :root { --sidebar-current: 64px; --topbar-h: auto; }
+
+  .sidebar { padding: 16px 10px; }
+  .sidebar__brand { justify-content: center; padding: 0; margin-bottom: 16px; }
+  .sidebar__brand-name, .pro-card { display: none; }
+  .nav__link { justify-content: center; padding: 0; }
+  .nav__label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .nav__badge {
+    position: absolute; top: 4px; right: 2px;
+    min-width: 18px; height: 16px; padding: 0 4px; font-size: 10px;
+    box-shadow: 0 0 0 2px var(--color-primary);
+  }
+  .nav__link.is-active .nav__badge { box-shadow: 0 0 0 2px #fff; }
+
+  .topbar__toggle { display: none; }
+  .topbar { flex-wrap: wrap; gap: 12px; padding: 12px 16px; position: static; }
+  .topbar__heading { flex: 1 1 100%; order: -1; }
+  .topbar__title { font-size: 22px; }
+  .topbar__actions { flex: 1 1 100%; gap: 8px; }
+  .search { flex: 1; min-width: 0; }
+  .search__input { width: 100%; min-width: 0; }
+  .search__kbd { display: none; }
+  .topbar__bell { display: none; }
+
+  .main { padding: 12px 12px 96px; }
+  .card { border-radius: var(--radius); }
+
+  .toolbar { padding: 14px; }
+  .toolbar__controls { width: 100%; }
+  .toolbar__controls .select { flex: 1 1 140px; min-width: 0; }
+  .toolbar__filter-icon { display: none; }
+  .toolbar__export { margin-left: auto; }
+  .bulkbar { flex-wrap: wrap; padding: 10px 14px; }
+
+  /* Responsive table: each row becomes a card with labelled fields. */
+  .ptable { min-width: 0; }
+  .ptable thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .ptable, .ptable tbody, .ptable tr, .ptable td { display: block; width: 100%; }
+
+  .prow[data-id] {
+    position: relative;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px 14px 12px 44px;
+    border-bottom: 1px solid var(--color-border);
+  }
+  .prow[data-id] td { width: auto; padding: 0; border: 0; background: transparent !important; max-width: none; min-width: 0; }
+  .prow[data-id]:nth-child(even) { background: var(--color-bg-alt); }
+  .prow[data-id]:hover { background: var(--color-secondary); }
+  .prow[data-id].is-selected { background: #DCE8FD; }
+  .prow[data-id]:focus-within { background: var(--color-primary-soft); }
+
+  .prow[data-id] .col-check { position: absolute; top: 26px; left: 14px; width: auto; }
+  .prow[data-id] .col-action { position: absolute; top: 12px; right: 8px; width: auto; }
+  .prow[data-id] .col-name { padding-right: 40px; margin-bottom: 8px; }
+  .prow[data-id] .pcell__name-row { flex-wrap: wrap; row-gap: 2px; }
+  .prow[data-id] .pcell__name { white-space: normal; }
+  .prow[data-id] td[data-label]:not(.col-name) {
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    min-height: 28px; text-align: right;
+  }
+  .prow[data-id] td[data-label]:not(.col-name)::before {
+    content: attr(data-label);
+    font-size: var(--fs-small); color: var(--color-text-muted); font-weight: var(--fw-medium);
+  }
+
+  .prow--skeleton { display: flex !important; flex-wrap: wrap; gap: 10px; padding: 16px; }
+  .prow--skeleton td { width: auto !important; height: auto; padding: 0; border: 0; }
+  .prow--skeleton td.col-name { flex: 1 1 100%; }
+  .prow--skeleton td.col-check, .prow--skeleton td.col-action { display: none; }
+  .prow--state td { width: 100%; }
+
+  .pagination { padding: 12px 14px; justify-content: space-between; }
+  .pagination__summary { flex: 1 1 100%; }
+  .pagination__size label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .pagination__pages { display: none; }
+  .pagination__mobile-current { display: inline-block; }
+
+  .drawer__panel { width: 100%; }
+  .drawer__body { padding: 20px 16px; }
+  .info-grid { grid-template-columns: 1fr; }
+  .form-row { grid-template-columns: 1fr; }
+
+  .toasts { right: 16px; bottom: 16px; }
+}
+
+@media (max-width: 379px) {
+  .pagination__word { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+}
+
+/* ---------------- Motion preferences ---------------- */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ---------------- Forced colours (Windows High Contrast) ---------------- */
+@media (forced-colors: active) {
+  .nav__link.is-active { outline: 2px solid CanvasText; }
+  .dot, .badge-vip, .page-btn.is-current { forced-color-adjust: none; }
+  :focus-visible { outline: 2px solid Highlight; }
+}
