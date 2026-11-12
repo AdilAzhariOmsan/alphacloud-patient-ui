@@ -51,10 +51,11 @@ export function formatDuration(minutes) {
 /** "Tan Wei Ming" → "TW", "Ahmad Faizal bin Rahman" → "AR" */
 export function initials(name) {
   const stop = new Set(['bin', 'binti', 'a/l', 'a/p', 'van', 'thi']);
-  const parts = name.split(/\s+/).filter((p) => p && !stop.has(p.toLowerCase()));
+  const letter = (word) => word.match(/\p{L}/u)?.[0] ?? '';
+  const parts = name.split(/\s+/).filter((p) => letter(p) && !stop.has(p.toLowerCase()));
   if (parts.length === 0) return '?';
-  const first = parts[0][0];
-  const last = parts.length > 1 ? parts[parts.length - 1][0] : '';
+  const first = letter(parts[0]);
+  const last = parts.length > 1 ? letter(parts[parts.length - 1]) : '';
   return (first + last).toUpperCase();
 }
 

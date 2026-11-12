@@ -161,12 +161,11 @@ export const patientService = {
     const FLOW = { offline: 'waiting', waiting: 'consulting', consulting: 'done', done: 'offline' };
     const tick = () => {
       if (document.hidden || db.length === 0) return;
+      // Pick which stage to advance, keeping the queue between 1 and 3 patients.
       const waiting = db.filter((p) => p.status === 'waiting').length;
-      const candidates = db.filter((p) => {
-        if (p.status === 'offline') return waiting < 4;
-        if (p.status === 'waiting') return waiting > 1;
-        return true;
-      });
+      const stages = waiting <= 1 ? ['offline'] : waiting >= 3 ? ['waiting'] : ['offline', 'waiting', 'consulting', 'done'];
+      const stage = stages[Math.floor(Math.random() * stages.length)];
+      const candidates = db.filter((p) => p.status === stage);
       const p = candidates[Math.floor(Math.random() * candidates.length)];
       if (!p) return;
       p.status = FLOW[p.status];
