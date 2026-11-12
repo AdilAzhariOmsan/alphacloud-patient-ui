@@ -1,0 +1,81 @@
+/* ==========================================================================
+   Design tokens — values taken directly from the UI spec, plus a few
+   derived shades (hover/active, danger, warning) needed for states.
+   ========================================================================== */
+:root {
+  /* Spec colours */
+  --color-primary: #0052CC;
+  --color-secondary: #E8F0FE;
+  --color-text: #333333;
+  --color-text-muted: #666666;
+  --color-border: #E5E5E5;
+  --color-bg: #FFFFFF;
+  --color-bg-alt: #F8F9FA;
+  --color-success: #36B37E;
+  --color-vip: #FFD700;
+
+  /* Derived */
+  --color-primary-hover: #0047B3;
+  --color-primary-active: #003D99;
+  --color-primary-soft: #F3F7FE;
+  --color-success-text: #1E7A52;     /* 5.1:1 on white — #36B37E itself is only used as fill */
+  --color-success-soft: #E3F6EE;
+  --color-vip-text: #5C4A00;         /* 7.9:1 on #FFD700 */
+  --color-warning: #FFAB00;
+  --color-warning-soft: #FFF6E0;
+  --color-warning-text: #7A5200;
+  --color-danger: #DE350B;
+  --color-danger-hover: #BF2600;
+  --color-danger-soft: #FFEBE6;
+  --color-icon: #6B6B6B;
+  --color-icon-hover-bg: #F1F2F4;
+  --color-input-bg: #F4F5F7;
+  --color-neutral-dot: #A0A4AB;
+  --color-backdrop: rgba(9, 30, 66, 0.42);
+
+  /* Typography */
+  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+               "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --fs-title: 24px;     /* page title, bold */
+  --fs-subtitle: 14px;  /* regular */
+  --fs-base: 14px;      /* table headers (medium) and content (regular) */
+  --fs-small: 12px;     /* ID numbers, muted */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+
+  /* Layout */
+  --sidebar-w: 240px;
+  --sidebar-rail-w: 72px;
+  --sidebar-current: var(--sidebar-w);
+  --topbar-h: 76px;
+  --drawer-w: 440px;
+
+  /* Shape & depth */
+  --radius-sm: 6px;
+  --radius: 8px;
+  --radius-lg: 12px;
+  --radius-pill: 999px;
+  --shadow-sm: 0 1px 2px rgba(9, 30, 66, 0.08);
+  --shadow-md: 0 4px 12px rgba(9, 30, 66, 0.12);
+  --shadow-lg: 0 12px 32px rgba(9, 30, 66, 0.18);
+
+  /* Focus */
+  --focus-ring: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--color-primary);
+  --focus-ring-inverse: 0 0 0 2px var(--color-primary), 0 0 0 4px #FFFFFF;
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur: 180ms;
+  --dur-slow: 280ms;
+
+  /* Layers */
+  --z-sidebar: 30;
+  --z-topbar: 20;
+  --z-drawer: 50;
+  --z-menu: 60;
+  --z-dialog: 70;
+  --z-toast: 80;
+  --z-tooltip: 90;
+}
