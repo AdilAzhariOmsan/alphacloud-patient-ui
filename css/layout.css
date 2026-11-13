@@ -98,6 +98,7 @@
 .topbar__toggle { display: none; }
 .topbar__heading { min-width: 0; margin-right: auto; }
 .topbar__title { font-size: var(--fs-title); font-weight: var(--fw-bold); line-height: 1.25; color: var(--color-text); }
+.topbar__title:lang(zh) { font-family: var(--font-cjk); }
 .topbar__subtitle { font-size: var(--fs-subtitle); font-weight: var(--fw-regular); color: var(--color-text-muted); }
 .topbar__actions { display: flex; align-items: center; gap: 12px; }
 

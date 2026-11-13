@@ -1,5 +1,5 @@
 import { $ } from './utils/dom.js';
-import { plural } from './utils/format.js';
+import { plural, toDateInputValue } from './utils/format.js';
 import { patientsToCsv, downloadCsv } from './utils/csv.js';
 import { patientService } from './services/patientService.js';
 import { Sidebar } from './components/sidebar.js';
@@ -60,12 +60,13 @@ const toolbar = Toolbar($('#toolbar'), {
     { id: 'delete', label: 'Delete selected', icon: 'trash', danger: true },
   ], handleBulkAction, { label: 'Bulk actions' }),
   onClearSelection: () => { state.selected.clear(); renderAll(); },
+  onSort: (sortKey, sortDir) => setQuery({ sortKey, sortDir, page: 1 }),
 });
 
 const table = PatientTable($('#table'), {
   onSort: (key) => {
     const { sortKey, sortDir } = state.query;
-    const dir = sortKey === key ? (sortDir === 'asc' ? 'desc' : 'asc') : key === 'createdAt' ? 'desc' : 'asc';
+    const dir = sortKey === key ? (sortDir === 'asc' ? 'desc' : 'asc') : key === 'createdAt' || key === 'lastVisit' ? 'desc' : 'asc';
     setQuery({ sortKey: key, sortDir: dir, page: 1 });
   },
   onOpen: (id, trigger) => panel.open(id, trigger),
@@ -100,6 +101,9 @@ const panel = DetailPanel($('#drawer-root'), {
 });
 
 const dialog = PatientDialog($('#dialog-root'), {
+  // The opener was re-rendered (e.g. the drawer's Edit button after a save):
+  // go back into the open drawer, otherwise to the patient list.
+  restoreFocus: (lost) => panel.restoreFocus(lost) || $('#table-wrap').focus(),
   async onSubmit(data, editing) {
     if (editing) {
       const saved = await patientService.update(editing.id, data);
@@ -246,7 +250,7 @@ async function exportPatients(records) {
   toolbar.setExporting(true);
   try {
     const rows = records ?? await patientService.listAll(state.query);
-    const stamp = new Date().toISOString().slice(0, 10);
+    const stamp = toDateInputValue(Date.now()); // local date, not UTC
     downloadCsv(records?.length === 1 ? `patient-${records[0].id}.csv` : `patients-${stamp}.csv`, patientsToCsv(rows));
     toast(`Exported ${plural(rows.length, 'patient')} to CSV.`, { type: 'success' });
   } catch (err) {

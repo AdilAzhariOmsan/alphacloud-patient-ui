@@ -1,4 +1,5 @@
 import { COUNTRIES, STATUSES, generatePatients } from '../data/patients.js';
+import { lastFourOf, documentTypeFor, identityNumberError } from '../utils/format.js';
 
 /**
  * Mock REST-like service. Every call is async with simulated latency, so the
@@ -51,7 +52,8 @@ function matches(p, { search = '', nationality = '', status = '', vip = false })
   if (vip && !p.vip) return false;
   if (!search) return true;
   const q = search.toLowerCase();
-  const haystack = [p.name, p.idNumber, p.id, p.phone.replace(/\s|-/g, ''), p.phone, p.email, COUNTRIES[p.nationality].name]
+  // Identity document numbers are deliberately not searchable.
+  const haystack = [p.name, p.id, p.phone.replace(/\s|-/g, ''), p.phone, p.email, COUNTRIES[p.nationality].name]
     .join(' ').toLowerCase();
   return haystack.includes(q.replace(/\s|-/g, '')) || haystack.includes(q);
 }
@@ -60,12 +62,45 @@ const SORTERS = {
   name: (a, b) => a.name.localeCompare(b.name),
   nationality: (a, b) => COUNTRIES[a.nationality].name.localeCompare(COUNTRIES[b.nationality].name) || a.name.localeCompare(b.name),
   createdAt: (a, b) => a.createdAt - b.createdAt,
+  // Patients with no visit yet sort as the least recent.
+  lastVisit: (a, b) => (a.lastVisit?.at ?? 0) - (b.lastVisit?.at ?? 0) || a.name.localeCompare(b.name),
 };
 
 function query(q) {
   const sorter = SORTERS[q.sortKey] ?? SORTERS.createdAt;
   const dir = q.sortDir === 'asc' ? 1 : -1;
   return db.filter((p) => matches(p, q)).sort((a, b) => sorter(a, b) * dir);
+}
+
+/**
+ * The "server" never keeps a full NRIC or passport number. A typed number is
+ * validated against the nationality's document type, then reduced to that
+ * type and its last four characters before anything is stored.
+ *
+ * Invariants (enforced here as well as in the form):
+ *   - creating a patient requires a document number;
+ *   - changing nationality requires a new document number, even between two
+ *     passport countries, so a previous identity is never silently kept;
+ *   - a blank number with an unchanged nationality keeps the document on file.
+ *
+ * `current` is the stored record when updating, or null when creating.
+ */
+function withStoredIdentity(data, current = null) {
+  const { idNumber, ...rest } = data;
+  const nationality = rest.nationality ?? current?.nationality;
+  const nationalityChanged = current !== null && rest.nationality !== undefined && rest.nationality !== current.nationality;
+
+  if (!idNumber) {
+    if (!current) throw new ServiceError('An NRIC or passport number is required.', 'IDENTITY_REQUIRED');
+    if (nationalityChanged) {
+      throw new ServiceError('The nationality changed, so a new NRIC or passport number is required.', 'IDENTITY_REQUIRED');
+    }
+    return rest;
+  }
+
+  const error = identityNumberError(nationality, idNumber);
+  if (error) throw new ServiceError(error, 'INVALID_IDENTITY');
+  return { ...rest, idType: documentTypeFor(nationality), idLast4: lastFourOf(idNumber) };
 }
 
 export const patientService = {
@@ -99,15 +134,15 @@ export const patientService = {
     return request(() => {
       const patient = {
         id: `PT-${nextId++}`,
-        idType: data.nationality === 'MY' ? 'NRIC' : 'Passport',
         createdAt: Date.now(),
         lastVisit: null,
         status: 'offline',
         appointments: [],
         occupation: '',
         remarks: '',
+        allergies: [],
         birthday: null,
-        ...data,
+        ...withStoredIdentity(data),
       };
       db.unshift(patient);
       return clone(patient);
@@ -118,7 +153,7 @@ export const patientService = {
     return request(() => {
       const p = db.find((x) => x.id === id);
       if (!p) throw new ServiceError('This patient record no longer exists.', 'NOT_FOUND');
-      Object.assign(p, patch);
+      Object.assign(p, withStoredIdentity(patch, p));
       return clone(p);
     }, { write: true });
   },

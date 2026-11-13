@@ -53,7 +53,7 @@ export function Sidebar(root, { active = 'patient', counts = {}, onNavigate } = 
 
     <div class="pro-card">
       <span class="pro-card__icon">${icon('sparkles')}</span>
-      <p class="pro-card__title">Update to Pro</p>
+      <p class="pro-card__title">Upgrade to Pro</p>
       <p class="pro-card__text">Unlock advanced reports, multi-branch queues and unlimited records.</p>
       <button type="button" class="btn btn--primary btn--sm pro-card__cta" data-action="upgrade">Upgrade now</button>
     </div>

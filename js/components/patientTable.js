@@ -1,13 +1,14 @@
 import { html, render, $, $$ } from '../utils/dom.js';
-import { formatDateTime, toIso, initials, avatarColours } from '../utils/format.js';
+import { formatDateTime, toIso, initials, avatarColours, maskIdentity, identityDescription } from '../utils/format.js';
 import { COUNTRIES, STATUSES } from '../data/patients.js';
 import { icon } from './icons.js';
 
 const COLUMNS = [
   { key: 'name', label: 'Patient Name', sortable: true },
+  { key: 'id', label: 'Patient ID' },
   { key: 'contact', label: 'Contact' },
   { key: 'nationality', label: 'Nationality', sortable: true },
-  { key: 'createdAt', label: 'Datetime', sortable: true },
+  { key: 'lastVisit', label: 'Last Visit', sortable: true },
 ];
 
 export const flagImg = (cc, size = 20) => {
@@ -27,6 +28,9 @@ export const avatar = (p, size = '') => {
     </span>
     <span class="sr-only" data-status-sr="${p.id}">Status: ${status.label}.</span>`;
 };
+
+/** Masked NRIC/passport: dots for sighted users, "NRIC ending in 6 2 0 2" for screen readers. */
+export const maskedIdentity = (p) => html`<span aria-hidden="true">${maskIdentity(p)}</span><span class="sr-only">${identityDescription(p)}</span>`;
 
 const vipBadge = () => html`<span class="badge-vip" title="VIP patient">${icon('star')}VIP</span>`;
 
@@ -48,15 +52,18 @@ function rowTemplate(p, selected) {
                       aria-label="${p.name}${p.vip ? ', VIP' : ''}. View details">${p.name}</button>
               ${p.vip ? vipBadge() : ''}
             </div>
-            <span class="pcell__id">${p.idNumber}</span>
+            <span class="pcell__id">${maskedIdentity(p)}</span>
           </div>
         </div>
       </td>
+      <td class="col-id" data-label="Patient ID"><span class="nowrap">${p.id}</span></td>
       <td class="col-contact" data-label="Contact"><span class="nowrap">${p.phone}</span></td>
       <td class="col-nat" data-label="Nationality">
         <span class="nat">${flagImg(p.nationality)}<span class="truncate" data-truncate>${c.name}</span></span>
       </td>
-      <td class="col-date" data-label="Datetime"><time datetime="${toIso(p.createdAt)}" class="nowrap">${formatDateTime(p.createdAt)}</time></td>
+      <td class="col-date" data-label="Last visit">${p.lastVisit
+        ? html`<time datetime="${toIso(p.lastVisit.at)}" class="nowrap">${formatDateTime(p.lastVisit.at)}</time>`
+        : html`<span class="muted">No visits yet</span>`}</td>
       <td class="col-action">
         <button type="button" class="icon-btn" data-menu="${p.id}" aria-haspopup="menu" aria-expanded="false"
                 aria-label="More actions for ${p.name}" data-tooltip="Actions">
@@ -71,6 +78,7 @@ const skeletonRows = (n) => Array.from({ length: n }, (_, i) => html`
     <td class="col-check"><span class="skel skel--box"></span></td>
     <td class="col-name"><div class="pcell"><span class="skel skel--circle"></span>
       <div class="pcell__text"><span class="skel" style="width:${120 + (i % 3) * 28}px"></span><span class="skel skel--sm" style="width:96px"></span></div></div></td>
+    <td class="col-id"><span class="skel" style="width:64px"></span></td>
     <td><span class="skel" style="width:128px"></span></td>
     <td><span class="skel" style="width:${84 + (i % 2) * 24}px"></span></td>
     <td><span class="skel" style="width:150px"></span></td>
@@ -79,7 +87,7 @@ const skeletonRows = (n) => Array.from({ length: n }, (_, i) => html`
 
 const stateRow = ({ tone = '', iconName, title, text, action }) => html`
   <tr class="prow prow--state">
-    <td colspan="6">
+    <td colspan="7">
       <div class="state${tone ? ` state--${tone}` : ''}" ${tone === 'error' ? html`role="alert"` : ''}>
         <span class="state__icon">${icon(iconName)}</span>
         <p class="state__title">${title}</p>

@@ -45,19 +45,21 @@ const OCCUPATIONS = [
   'Marketing Manager', 'Data Analyst', 'Pilot', 'Homemaker', 'Journalist', 'Logistics Coordinator',
 ];
 
-const REMARKS = [
-  'Allergic to penicillin. Use alternative antibiotics.',
-  'No known drug allergies.',
-  'Mild asthma. Carries a salbutamol inhaler.',
-  'Type 2 diabetes, managed with metformin 500 mg twice daily.',
-  'Allergic to shellfish and latex. Use nitrile gloves.',
-  'Hypertension. Monitor blood pressure at every visit.',
-  'Allergic to NSAIDs (ibuprofen). Paracetamol only.',
-  'Lower back pain after a 2024 sports injury.',
-  'Seasonal allergic rhinitis. On cetirizine as needed.',
-  'Pregnant, second trimester. Avoid X-ray imaging.',
-  'High cholesterol. On atorvastatin 20 mg.',
-  'Allergic to peanuts (anaphylaxis). Has an EpiPen.',
+/* Medical profile: free-text remarks plus a structured allergy list. Twelve
+   entries, picked once per patient, so the seeded sequence stays stable. */
+const MEDICAL_PROFILES = [
+  { remarks: 'Use alternative antibiotics.', allergies: ['Penicillin'] },
+  { remarks: 'No ongoing conditions.', allergies: [] },
+  { remarks: 'Mild asthma. Carries a salbutamol inhaler.', allergies: [] },
+  { remarks: 'Type 2 diabetes, managed with metformin 500 mg twice daily.', allergies: [] },
+  { remarks: 'Use nitrile gloves for all procedures.', allergies: ['Shellfish', 'Latex'] },
+  { remarks: 'Hypertension. Monitor blood pressure at every visit.', allergies: [] },
+  { remarks: 'Paracetamol only for pain relief.', allergies: ['NSAIDs (ibuprofen)'] },
+  { remarks: 'Lower back pain after a 2024 sports injury.', allergies: [] },
+  { remarks: 'Seasonal allergic rhinitis. On cetirizine as needed.', allergies: ['Dust mites'] },
+  { remarks: 'Pregnant, second trimester. Avoid X-ray imaging.', allergies: [] },
+  { remarks: 'High cholesterol. On atorvastatin 20 mg.', allergies: [] },
+  { remarks: 'History of anaphylaxis. Carries an EpiPen.', allergies: ['Peanuts'] },
 ];
 
 const TREATMENTS = [
@@ -100,12 +102,12 @@ export function generatePatients(now = Date.now()) {
     const country = COUNTRIES[cc];
     const birthYear = int(1952, 2008);
     const birthday = new Date(birthYear, int(0, 11), int(1, 28)).getTime();
-    const bd = new Date(birthday);
-    const yymmdd = `${String(birthYear).slice(2)}${String(bd.getMonth() + 1).padStart(2, '0')}${String(bd.getDate()).padStart(2, '0')}`;
-
-    const idNumber = cc === 'MY'
-      ? `${yymmdd}-${String(int(1, 16)).padStart(2, '0')}-${digits(4)}`
-      : `${String.fromCharCode(65 + int(0, 25))}${digits(8)}`;
+    // Identity documents: only the last four characters are ever generated or
+    // kept, so no complete (and potentially real) NRIC or passport number
+    // exists anywhere in the demo. The discarded draws keep the seeded
+    // sequence, and therefore every other field, unchanged.
+    if (cc === 'MY') int(1, 16); else { int(0, 25); digits(4); }
+    const idLast4 = digits(4);
 
     const phone = cc === 'MY'
       ? `${country.dial} 1${int(0, 9)}-${digits(3)} ${digits(4)}`
@@ -130,8 +132,8 @@ export function generatePatients(now = Date.now()) {
     return {
       id: `PT-${String(1001 + i)}`,
       name,
-      idNumber,
       idType: cc === 'MY' ? 'NRIC' : 'Passport',
+      idLast4,
       phone,
       email: `${slug}@example.com`,
       nationality: cc,
@@ -140,7 +142,7 @@ export function generatePatients(now = Date.now()) {
       vip: rand() < 0.24,
       createdAt: roundTo5(now - int(0, 75) * DAY - int(0, 600) * MIN),
       lastVisit: { at: roundTo5(now - int(3, 220) * DAY), durationMin: pick([20, 25, 30, 40, 45, 60, 75, 90]) },
-      remarks: pick(REMARKS),
+      ...structuredClone(pick(MEDICAL_PROFILES)),
       // Exactly two patients start in the queue, matching the "Queue 2" badge in the spec.
       status: i === 2 || i === 13 ? 'waiting' : i === 5 || i === 20 ? 'consulting' : rand() < 0.3 ? 'done' : 'offline',
       appointments,

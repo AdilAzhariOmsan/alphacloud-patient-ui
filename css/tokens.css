@@ -34,8 +34,9 @@
   --color-backdrop: rgba(9, 30, 66, 0.42);
 
   /* Typography */
-  --font-sans: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
-               "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  --font-sans: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial,
+               "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-cjk: "Noto Sans SC", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
   --fs-title: 24px;     /* page title, bold */
   --fs-subtitle: 14px;  /* regular */
   --fs-base: 14px;      /* table headers (medium) and content (regular) */

@@ -71,7 +71,12 @@
 
   /* Responsive table: each row becomes a card with labelled fields. */
   .ptable { min-width: 0; }
-  .ptable thead { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* The header row (and its sort buttons) is removed entirely, not visually
+     hidden, so keyboard focus can't land on invisible controls. Sorting moves
+     to the visible "Sort by" select in the toolbar. */
+  .ptable thead { display: none; }
+  .toolbar__sort { display: flex; align-items: center; gap: 8px; flex: 1 1 100%; min-width: 0; }
+  .toolbar__sort .select { flex: 1 1 auto; }
   .ptable, .ptable tbody, .ptable tr, .ptable td { display: block; width: 100%; }
 
   .prow[data-id] {
@@ -93,9 +98,11 @@
   .prow[data-id] .pcell__name-row { flex-wrap: wrap; row-gap: 2px; }
   .prow[data-id] .pcell__name { white-space: normal; }
   .prow[data-id] td[data-label]:not(.col-name) {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 2px 12px;
     min-height: 28px; text-align: right;
   }
+  /* On narrow cards the value wraps under its label instead of overflowing. */
+  .prow[data-id] td[data-label]:not(.col-name) > :last-child { margin-left: auto; min-width: 0; max-width: 100%; }
   .prow[data-id] td[data-label]:not(.col-name)::before {
     content: attr(data-label);
     font-size: var(--fs-small); color: var(--color-text-muted); font-weight: var(--fw-medium);

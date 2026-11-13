@@ -76,4 +76,62 @@ export function avatarColours(seed) {
   return AVATAR_COLOURS[hash % AVATAR_COLOURS.length];
 }
 
+/**
+ * Identity documents are never stored or shown in full. Records keep only the
+ * document type and the last four characters, and every presentation path
+ * (table, panel, export) goes through these helpers.
+ */
+export const ID_LABELS = { NRIC: 'NRIC', Passport: 'Passport' };
+
+/** "••••••-••-6202" (NRIC) or "•••••6202" (passport) */
+export function maskIdentity(p) {
+  if (!p?.idLast4) return '';
+  return p.idType === 'NRIC' ? `••••••-••-${p.idLast4}` : `•••••${p.idLast4}`;
+}
+
+/** Spoken form for screen readers: "NRIC ending in 6202" */
+export function identityDescription(p) {
+  if (!p?.idLast4) return 'No identity document on file';
+  return `${ID_LABELS[p.idType] ?? 'ID'} ending in ${p.idLast4.split('').join(' ')}`;
+}
+
+/** Reduces a typed document number to what the record keeps: its last 4 letters or digits. */
+export const lastFourOf = (value) => String(value).replace(/[^0-9a-z]/gi, '').slice(-4).toUpperCase();
+
+/** Malaysian nationals are identified by NRIC; everyone else by passport. */
+export const documentTypeFor = (nationality) => (nationality === 'MY' ? 'NRIC' : 'Passport');
+
+/**
+ * Checks a typed document number against the document type the nationality
+ * requires. Shared by the form and the patient service so both layers apply
+ * the same rule. Returns '' when valid, otherwise an error message.
+ *   NRIC:     12 digits, optionally grouped as 900101-14-5678
+ *   Passport: 6–9 letters or digits (ICAO maximum), including at least one digit
+ */
+export function identityNumberError(nationality, value) {
+  const raw = String(value ?? '').trim();
+  if (!raw) return 'Enter the NRIC or passport number.';
+  if (documentTypeFor(nationality) === 'NRIC') {
+    return /^\d{6}-?\d{2}-?\d{4}$/.test(raw) ? '' : 'Enter a 12-digit NRIC number, e.g. 900101-14-5678.';
+  }
+  const compact = raw.replace(/[\s-]/g, '');
+  return /^[a-z0-9]{6,9}$/i.test(compact) && /\d/.test(compact) ? '' : 'Enter a passport number of 6–9 letters or digits.';
+}
+
+/** Local-date helpers for <input type="date"> */
+export function toDateInputValue(ts) {
+  if (ts == null) return '';
+  const d = new Date(ts);
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
+/** "2006-08-15" → local-midnight timestamp, or null if the string is not a real calendar date. */
+export function fromDateInputValue(value) {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value ?? '');
+  if (!m) return null;
+  const [y, mo, d] = [Number(m[1]), Number(m[2]), Number(m[3])];
+  const date = new Date(y, mo - 1, d);
+  return date.getFullYear() === y && date.getMonth() === mo - 1 && date.getDate() === d ? date.getTime() : null;
+}
+
 export const plural = (n, word, pluralWord = `${word}s`) => `${n} ${n === 1 ? word : pluralWord}`;

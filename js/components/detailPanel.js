@@ -2,7 +2,7 @@ import { html, render, $, focusableWithin, prefersReducedMotion } from '../utils
 import { formatDate, formatTime, ageFrom, relativeTime, formatDuration, plural } from '../utils/format.js';
 import { COUNTRIES, STATUSES } from '../data/patients.js';
 import { icon } from './icons.js';
-import { avatar, flagImg } from './patientTable.js';
+import { avatar, flagImg, maskedIdentity } from './patientTable.js';
 
 const APPT_CHIP = { Confirmed: 'success', Pending: 'warning', Rescheduled: 'primary' };
 const MONTHS_SHORT = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
@@ -43,13 +43,13 @@ function appointmentCard(a) {
 
 function detailTemplate(p) {
   const c = COUNTRIES[p.nationality];
-  const hasAllergy = /allerg|anaphylaxis/i.test(p.remarks ?? '');
+  const allergies = p.allergies ?? [];
   return html`
     <div class="profile-card">
       ${avatar(p, 'lg')}
       <div class="profile-card__text">
         <p class="profile-card__name">${p.name} ${p.vip ? html`<span class="badge-vip">${icon('star')}VIP</span>` : ''}</p>
-        <p class="profile-card__id">${p.id} · ${p.idNumber}</p>
+        <p class="profile-card__id">${p.id} · ${maskedIdentity(p)}</p>
         ${statusChip(p)}
       </div>
     </div>
@@ -67,7 +67,7 @@ function detailTemplate(p) {
         ${infoItem('mail', 'Email', p.email ? html`<a href="mailto:${p.email}" class="truncate" data-truncate>${p.email}</a>` : '')}
         ${infoItem('globe', 'Nationality', html`<span class="nat">${flagImg(p.nationality)}${c.name}</span>`)}
         ${infoItem('cake', 'Birthday', p.birthday ? html`${formatDate(p.birthday)} <span class="muted">· ${ageFrom(p.birthday)} years old</span>` : '')}
-        ${infoItem('idCard', p.idType === 'NRIC' ? 'NRIC' : 'Passport', p.idNumber)}
+        ${infoItem('idCard', p.idType === 'NRIC' ? 'NRIC' : 'Passport', p.idLast4 ? maskedIdentity(p) : '')}
         ${infoItem('briefcase', 'Occupation', p.occupation)}
         ${infoItem('clock', 'Last visit', p.lastVisit
           ? html`${formatDate(p.lastVisit.at)} <span class="muted">· ${relativeTime(p.lastVisit.at)}</span><br />
@@ -78,9 +78,20 @@ function detailTemplate(p) {
 
     <section class="drawer__section" aria-labelledby="sec-remarks">
       <h3 class="drawer__section-title" id="sec-remarks">Medical remarks</h3>
-      <div class="remark${hasAllergy ? ' remark--alert' : ''}">
-        ${icon(hasAllergy ? 'alert' : 'notes', { size: 'sm' })}
-        <p>${hasAllergy ? html`<strong>Allergy alert: </strong>` : ''}${p.remarks || 'No remarks recorded.'}</p>
+      ${allergies.length
+        ? html`<div class="remark remark--alert" data-allergies>
+            ${icon('alert', { size: 'sm' })}
+            <div>
+              <p><strong>Allergies</strong></p>
+              <ul class="allergy-list" aria-label="${plural(allergies.length, 'allergy', 'allergies')}">
+                ${allergies.map((a) => html`<li class="chip chip--danger">${a}</li>`)}
+              </ul>
+            </div>
+          </div>`
+        : html`<div class="remark" data-allergies>${icon('notes', { size: 'sm' })}<p>No known allergies.</p></div>`}
+      <div class="remark">
+        ${icon('notes', { size: 'sm' })}
+        <p>${p.remarks || 'No remarks recorded.'}</p>
       </div>
     </section>
 
@@ -117,7 +128,7 @@ export function DetailPanel(root, { load, onEdit, inertTargets }) {
   render(root, html`
     <div class="drawer" id="drawer" hidden>
       <div class="drawer__backdrop" data-close></div>
-      <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title">
+      <div class="drawer__panel" role="dialog" aria-modal="true" aria-labelledby="drawer-title" tabindex="-1">
         <header class="drawer__header">
           <h2 class="drawer__title" id="drawer-title">Patient details</h2>
           <button type="button" class="icon-btn" data-close aria-label="Close patient details">${icon('x')}</button>
@@ -133,6 +144,17 @@ export function DetailPanel(root, { load, onEdit, inertTargets }) {
   let returnFocus = null;
   let current = null;
   let requestId = 0;
+  // A panel action (e.g. "edit") to focus once the details have re-rendered.
+  let pendingFocus = null;
+
+  /** True while focus is inside the panel or has been lost to <body>. */
+  const focusIsOurs = () => panel.contains(document.activeElement) || document.activeElement === document.body
+    || document.activeElement == null;
+
+  function focusAction(action) {
+    const target = action ? $(`[data-panel-action="${action}"]`, body) : null;
+    (target ?? panel).focus();
+  }
 
   function setInert(on) {
     inertTargets.forEach((el) => { el.inert = on; });
@@ -147,8 +169,12 @@ export function DetailPanel(root, { load, onEdit, inertTargets }) {
       if (req !== requestId) return;
       current = patient;
       render(body, detailTemplate(patient));
+      if (pendingFocus && focusIsOurs()) focusAction(pendingFocus);
+      pendingFocus = null;
     } catch (err) {
       if (req !== requestId) return;
+      if (pendingFocus && focusIsOurs()) panel.focus();
+      pendingFocus = null;
       render(body, html`
         <div class="state state--error" role="alert">
           <span class="state__icon">${icon('alertCircle')}</span>
@@ -159,29 +185,51 @@ export function DetailPanel(root, { load, onEdit, inertTargets }) {
     }
   }
 
+  // Logical state. The element stays visible for the length of the closing
+  // transition, so `drawer.hidden` alone can't say whether the panel is open.
+  let isOpen = false;
+  let cancelHide = null;
+
   function open(id, trigger) {
-    returnFocus = trigger ?? document.activeElement;
     drawer.dataset.id = id;
-    if (drawer.hidden) {
+    if (!isOpen) {
+      isOpen = true;
+      returnFocus = trigger ?? document.activeElement;
+      cancelHide?.(); // reopened during the closing transition
       drawer.hidden = false;
       setInert(true);
-      requestAnimationFrame(() => drawer.classList.add('is-open'));
+      requestAnimationFrame(() => { if (isOpen) drawer.classList.add('is-open'); });
       $('[data-close].icon-btn', drawer).focus();
     }
     show(id);
   }
 
-  function close() {
-    if (drawer.hidden) return;
-    requestId++;
-    drawer.classList.remove('is-open');
-    setInert(false);
+  /** Hides the drawer once the slide-out finishes (or straight away with reduced motion). */
+  function hideAfterTransition() {
     const finish = () => {
+      cancelHide();
       drawer.hidden = true;
       render(body, '');
     };
+    const onEnd = (e) => { if (e.target === panel) finish(); };
+    const fallback = setTimeout(finish, 600); // in case transitionend never fires
+    cancelHide = () => {
+      clearTimeout(fallback);
+      panel.removeEventListener('transitionend', onEnd);
+      cancelHide = null;
+    };
     if (prefersReducedMotion()) finish();
-    else panel.addEventListener('transitionend', finish, { once: true });
+    else panel.addEventListener('transitionend', onEnd);
+  }
+
+  function close() {
+    if (!isOpen) return;
+    isOpen = false;
+    requestId++;
+    pendingFocus = null;
+    drawer.classList.remove('is-open');
+    setInert(false);
+    hideAfterTransition();
     // Return focus to the row's name button. Fall back to the main region if
     // the row was re-rendered or removed.
     const target = returnFocus?.isConnected ? returnFocus : document.querySelector(`[data-open="${drawer.dataset.id}"]`);
@@ -207,17 +255,34 @@ export function DetailPanel(root, { load, onEdit, inertTargets }) {
     if (items.length === 0) return;
     const first = items[0];
     const last = items[items.length - 1];
-    if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
-    else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    const idx = items.indexOf(document.activeElement);
+    // Wrap at either end. Focus on the panel itself (idx -1) also stays inside.
+    if (e.shiftKey && idx <= 0) { e.preventDefault(); last.focus(); }
+    else if (!e.shiftKey && (idx === -1 || idx === items.length - 1)) { e.preventDefault(); first.focus(); }
   });
 
   return {
     open,
     close,
-    get openId() { return drawer.hidden ? null : drawer.dataset.id; },
-    refresh() { if (!drawer.hidden) show(drawer.dataset.id); },
+    get openId() { return isOpen ? drawer.dataset.id : null; },
+    refresh() { if (isOpen) show(drawer.dataset.id); },
+    /**
+     * Puts focus back inside the panel after an overlay it opened (the edit
+     * dialog) closes. `lost` is the element that opened it, which a refresh
+     * may have replaced: the same action is focused once it re-renders, and
+     * the panel itself holds focus in the meantime, so Esc and Tab keep working.
+     */
+    restoreFocus(lost) {
+      if (!isOpen) return false;
+      const action = lost?.dataset?.panelAction ?? null;
+      const target = action ? $(`[data-panel-action="${action}"]`, body) : null;
+      if (target && current) { target.focus(); return true; }
+      panel.focus();
+      pendingFocus = action;
+      return true;
+    },
     setStatus(id, status) {
-      if (drawer.hidden || drawer.dataset.id !== id || !current) return;
+      if (!isOpen || drawer.dataset.id !== id || !current) return;
       current.status = status;
       const chip = $('[data-panel-status]', body);
       if (chip) chip.outerHTML = String(statusChip(current));

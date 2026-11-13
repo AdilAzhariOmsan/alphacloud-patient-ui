@@ -15,7 +15,7 @@ export function Header(root, { user, onSearch, onAdd, onToggleSidebar, onNotific
 
     <div class="topbar__heading">
       <h1 class="topbar__title" lang="zh-Hans">患者管理</h1>
-      <p class="topbar__subtitle">Patient Management · View and manage patient records</p>
+      <p class="topbar__subtitle">Manage patient records and appointments</p>
     </div>
 
     <div class="topbar__actions">

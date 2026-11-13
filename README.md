@@ -1,120 +1,160 @@
 # Alphacloud · Patient Management UI
 
-A responsive, accessible **Patient Management System** front end built for the Alphacloud Frontend/UI assessment. It uses plain HTML, CSS and vanilla JavaScript (native ES modules), with **no build step and no dependencies**.
+A responsive, accessible **Patient Management** front end (患者管理) built for the Alphacloud Frontend/UI assessment. It is plain HTML, CSS and vanilla JavaScript (native ES modules): **no framework, no build step and no runtime dependencies**. All data comes from an in-browser mock service, so there is no backend.
 
-> **Live preview:** _add your GitHub Pages URL here_
-
-![Desktop layout](docs/screenshot-desktop.png)
+![Patient list at 1440px](docs/screenshot-desktop.png)
 
 ---
+
+## Main functionality
+
+- **Patient list:** avatar with a live status dot, name, masked NRIC/passport, Patient ID, contact number, nationality with flag, last visit (`DD MMM YYYY HH:MM AM/PM`), VIP badge and a row actions menu. Alternating `#F8F9FA` rows with hover and focus states.
+- **Search** by name, Patient ID, phone (with or without spaces and hyphens), email or nationality. Identity numbers are deliberately not searchable.
+- **Filters:** nationality, live status and VIP only. A pill shows the match count, such as `10 / 36`. Changing a filter returns to page 1.
+- **Sorting** by Patient Name, Nationality and Last Visit through the column headers (`aria-sort` included). On mobile, a **Sort by** select replaces the headers and also offers registration order. The default order is newest registered first.
+- **Pagination** with Prev/Next, page numbers, a rows-per-page selector (8, 16, 32) and "Showing X of Y results".
+- **Detail panel** (slides in from the right): contact, email, nationality, birthday and age, masked NRIC/passport, occupation, last visit with how long ago and its duration, allergies (a separate structured list), medical remarks and upcoming appointment cards.
+- **Add / edit patient** dialog with inline validation. Edits only change the fields in the form. The creation date, last visit, appointments and live status are kept.
+- **VIP toggle** from the row menu or as a bulk action.
+- **Delete with Undo.** The restored record goes back to its original position.
+- **CSV export** of the filtered list, the current selection or a single record (see *Security and privacy*).
+- **Bulk actions:** select rows to mark or unmark VIP, export or delete.
+- **Simulated real-time status:** patients move through *Not in clinic → In queue → In consultation → Checked out*, updating the status dots and the sidebar Queue badge.
+- **Loading, empty and error states**, including retry and error toasts for failed writes.
+
+![Detail panel with masked NRIC, allergies, remarks and upcoming appointments](docs/screenshot-detail.png)
+
+The sidebar items other than **Patient**, the notification bell, the profile menu and **Upgrade now** are placeholders. They show a short "not part of this demo" message.
+
+## Technology stack
+
+| Area | Choice |
+| --- | --- |
+| Markup and styles | HTML5, CSS custom properties (design tokens in `css/tokens.css`) |
+| Scripts | Vanilla JavaScript ES modules, no bundler |
+| Fonts | IBM Plex Sans; Noto Sans SC for the Chinese title, subset to its four glyphs (Google Fonts) |
+| Flags | Images from [flagcdn.com](https://flagcdn.com) (emoji flags don't render on Windows) |
+| Tests | Node's built-in test runner (`node:test`), with no packages to install |
+
+## Requirements
+
+- A current version of Chrome, Edge, Firefox or Safari. The app uses `<dialog>`, `inert`, `structuredClone` and `:focus-visible`.
+- Any static file server. The examples below use Python 3 or Node.
+- **Node.js 22 or newer** to run the tests (for glob support in `node --test`). They were run on Node 24.
+- An internet connection for the web fonts and flag images. Without one, the app still works with system fonts, and the flags fall back to their alt text.
 
 ## Running locally
 
-ES modules don't load over `file://`, so serve the folder with any static server:
+Serve the project folder over HTTP and open it in a browser:
 
 ```bash
-# Option 1: Node
-npx serve .
-
-# Option 2: Python
+# Python 3 (nothing to install)
 python -m http.server 5173
+
+# or Node (npx downloads the "serve" package the first time)
+npx serve -l 5173 .
 ```
 
-Then open <http://localhost:5173>.
+Then open <http://localhost:5173>. Laragon, VS Code Live Server or any other static server works too. No build step or environment variables are needed.
 
-### Deploying to GitHub Pages
-In the repo, go to **Settings → Pages → Build and deployment**, pick **Deploy from a branch**, choose `main` and `/ (root)`, then save. The site needs no build.
+### Why `file://` doesn't work
+
+Opening `index.html` directly from disk shows an empty shell. The app loads as an ES module (`<script type="module">`), and browsers treat every `file://` page as a unique, opaque origin, so they block its module imports under the CORS rules. Serving the folder over `http://localhost` avoids this.
 
 ### Demo URL flags
-The data layer is a mock async service with simulated latency, so every UI state is real. These flags let you force each one:
 
-| URL | What you'll see |
+The mock service adds latency, so every UI state is real. These query parameters force specific states:
+
+| URL | Effect |
 | --- | --- |
-| `/?delay=3000` | Loading skeletons for 3 seconds |
-| `/?empty` | Empty state (no patients yet) |
-| `/?fail` | Error state with **Try again** in both the list and the detail panel |
-| `/?failOps` | Writes (edit, delete, VIP, add) fail with an error toast or an inline form error |
+| `/?delay=3000` | Simulated network latency in ms (default 550). Shows the loading skeletons. |
+| `/?empty` | Starts with no patients and shows the empty state |
+| `/?fail` | List and detail requests fail and show the error state with **Try again** |
+| `/?failOps` | Writes (add, edit, delete, VIP) fail with an error toast or an inline form error |
 
-A search with no matches shows the "No patients found" empty state.
+## Running the tests
 
----
+```bash
+node --test "tests/*.test.mjs"
+```
 
-## Features
+Keep the quotes: Node expands the glob itself, and recent versions reject a bare directory argument such as `node --test tests/`. On Node 18–20, list the files instead: `node --test tests/csv.test.mjs tests/identity.test.mjs`. No `package.json` is included because there is nothing to install. The tests use only `node:test` and `node:assert`.
 
-**Spec coverage**
-- **Sidebar:** fixed, 240px wide, `#0052CC`. Eight menu items with icons and an active state on **Patient**. Counter badges on **Queue** (live) and **Appointment** (5). A white **Update to Pro** card with a blue CTA.
-- **Header:** the **患者管理** title (24px bold) with a 14px subtitle. A light-grey search with a prefixed icon, the "Search" placeholder and a 240px minimum width (press `/` to focus it). A **+** add-patient button and the user profile with an avatar.
-- **Patient table:** avatar, full name and ID number (12px, muted). Phone with country code. Country with its flag. `DD MMM YYYY HH:MM AM/PM` timestamps. VIP badges (`#FFD700`). Alternating `#F8F9FA` rows and hover states. A three-dots menu on each row.
-- **Pagination:** Prev/Next buttons, page numbers with a current-page indicator, a rows-per-page selector and **"Showing X of Y results"**.
-- **Detail panel:** slides in from the right. Shows contact, email, nationality with its flag, birthday and age, NRIC/passport, occupation, last visit (date, how long ago and visit duration) and medical remarks. Allergies are highlighted as an alert. It also lists **upcoming appointment cards**: date and time, treatment, doctor, status and symptom summary.
-- **States:** skeleton loading, empty (no data or no matches), error with retry, error toasts for failed operations, and tooltips that appear only when text is actually truncated.
+To syntax-check every module:
 
-**Bonus features**
-- **Sorting** on Patient Name, Nationality and Datetime (`aria-sort` included)
-- **Filters:** nationality, live status and VIP only, with a summary pill such as "14 / 36"
-- **CSV export** of the filtered list, of the current selection or of a single record. It is UTF-8 with a BOM for Excel and escapes values to block CSV injection.
-- **Bulk actions menu:** select rows, then mark or unmark VIP, export or delete
-- **Quick actions menu** (three dots): view, edit, toggle VIP, export, and delete with **Undo**
-- **Real-time status indicators:** a simulated live feed moves patients through *Not in clinic → In queue → In consultation → Checked out*. It updates the status dots in place and the sidebar Queue badge, and pauses while the tab is hidden.
-- **Add and edit patient** dialog with inline validation
+```bash
+for f in js/*.js js/*/*.js tests/*.mjs; do node --check "$f"; done
+```
 
----
+### Test coverage
 
-## Responsive behaviour
+There are 47 tests in two files:
 
-| Breakpoint | Behaviour |
-| --- | --- |
-| **Desktop ≥ 1200px** | Full layout with the 240px sidebar |
-| **Tablet 768–1199px** | A header toggle collapses the sidebar to a 72px icon rail (the choice is remembered). The table scrolls horizontally inside a focusable region. |
-| **Mobile < 768px** | Icon-only sidebar (labels appear as tooltips). The header wraps. Table rows become cards with labelled fields, and pagination is condensed. |
+- **`tests/csv.test.mjs`:** CSV formula-injection protection for every value starting with `=`, `+`, `-`, `@`, a tab or a carriage return, in every column including Contact. This includes international phone numbers such as `+44-20-7946-0958` and `+60 16-694 7068`. The file also covers RFC 4180 quoting (commas, quotes, multi-line remarks), empty and null values, masked identities in the full export, and the UTF-8 BOM.
+- **`tests/identity.test.mjs`:** the NRIC/passport rules shared by the form and the service. Malaysia requires a 12-digit NRIC, and other nationalities require a 6–9 character passport. A nationality change requires a new document. A blank number with an unchanged nationality keeps the stored document. Edits preserve the creation date, last visit and appointments. Only the last four characters are ever stored.
 
----
+The UI itself (components, focus management and responsive layout) has no automated tests in this repository. It was checked manually in a browser (see *Known limitations*).
+
+## Security and privacy
+
+- **Demo data is fictional.** Names, contact details and medical notes are generated from a fixed seed. Emails use the reserved `example.com` domain. No complete NRIC or passport number is ever generated: the seed produces only the last four characters.
+- **Identity documents are never stored in full.** A typed number is validated, then reduced to its document type and last four characters before it reaches the data layer. The typed value is cleared from the form after saving or closing. Everywhere a number is displayed or exported, it is masked (`••••••-••-6202` or `•••••8977`), and screen readers hear "NRIC ending in 6 2 0 2".
+- **Document integrity:** changing a patient's nationality requires a new document number, which must match the new nationality's document type. The form and the service enforce this independently.
+- **CSV export** neutralises any value that a spreadsheet could run as a formula by prefixing it with an apostrophe. This applies to every column, with no exemptions for phone numbers. Fields are quoted per RFC 4180, and the file starts with a UTF-8 BOM so Excel reads names and Chinese text correctly. One side effect: phone numbers that start with `+` show a leading `'` in spreadsheet apps that display it literally.
+- **Markup injection:** components render through an `html` tagged template that escapes every interpolated value.
 
 ## Accessibility
 
-- **Contrast:** all text pairs meet WCAG AA. `#36B37E` (success) and `#FFD700` (VIP) are used as fills, with darker text tokens on top.
-- **Keyboard:** everything works from the keyboard.
-  - A skip link and a `/` shortcut for search
-  - `↑`/`↓` move between table rows
-  - Menus follow the WAI-ARIA menu-button pattern (`↑ ↓ Home End Esc`)
-  - The detail panel is a modal dialog with a focus trap, `Esc` to close, an `inert` background and focus returned to whatever opened it
-  - Focus is kept on the same control after rows re-render
-- **Focus:** a visible `:focus-visible` ring on every interactive element.
-- **ARIA:** labelled icon buttons, a `role="search"` landmark, `aria-current` on the active nav item and page, `aria-sort`, `aria-busy`, polite live regions for result counts and toasts, `role="alert"` for errors, and screen-reader text for badges and status dots.
-- **Images and icons:** every flag `<img>` has alt text, and decorative SVG icons are `aria-hidden`.
-- **Preferences:** `prefers-reduced-motion` and Windows forced-colors mode are respected.
-- **Forms:** errors are linked to their fields with `aria-describedby` and `aria-invalid`, and focus moves to the first invalid field.
+What was implemented and checked in Chromium:
 
----
+- Keyboard operation throughout: a skip link, `/` to focus search, `↑`/`↓` between table rows, and the WAI-ARIA menu-button pattern for row and bulk menus.
+- The detail panel and the add/edit dialog are modal. Focus is trapped (Tab and Shift+Tab wrap), Esc closes the topmost overlay, the background is `inert`, and focus returns to the control that opened the overlay. After an edit is saved from the panel, focus returns to the panel's **Edit** button.
+- A visible focus indicator on every interactive element. Labels on all controls, with form errors linked through `aria-describedby` and `aria-invalid`.
+- Text contrast meets WCAG AA (spec colours such as `#36B37E` and `#FFD700` are used as fills, with darker text on top). Flags have alt text, and decorative icons are hidden.
+- `prefers-reduced-motion` and Windows forced-colours mode are respected.
+
+These checks were automated DOM and contrast checks plus keyboard walkthroughs. **No screen reader (NVDA, JAWS or VoiceOver) testing has been done.**
+
+## Responsive behaviour
+
+| Width | Behaviour |
+| --- | --- |
+| ≥ 1200px | Full layout with the 240px sidebar |
+| 768–1199px | A header toggle collapses the sidebar to a 72px icon rail (remembered). The table scrolls horizontally inside a focusable region when needed. |
+| < 768px | Icon-only sidebar. Table rows become labelled cards, the column headers are replaced by a **Sort by** select, and pagination is condensed. The detail panel goes full width. |
+
+Checked at 320, 375, 768, 1024, 1280 and 1440px with no page-level horizontal overflow.
 
 ## Project structure
 
 ```
 index.html                     App shell and mount points
 css/
-  tokens.css                   Design tokens (spec colours, type scale, spacing, z-index)
+  tokens.css                   Design tokens (colours, type, layout, z-index)
   base.css                     Reset, focus ring, buttons, badges, avatars, form controls
-  layout.css                   Sidebar, top header, main area
+  layout.css                   Sidebar, header, main area
   components.css               Table, pagination, menu, drawer, dialog, toasts, tooltip, states
   responsive.css               Breakpoints, reduced motion, forced colours
 js/
-  main.js                      App state, data loading (with a race guard), wiring
-  components/
-    sidebar.js  header.js  toolbar.js  patientTable.js  pagination.js
-    detailPanel.js  actionMenu.js  patientDialog.js  toast.js  tooltip.js  icons.js
-  services/patientService.js   Mock async API (list/get/create/update/remove/restore + live feed)
-  data/patients.js             Seeded, deterministic mock patients
+  main.js                      App state, data loading (with a race guard) and wiring
+  components/                  sidebar, header, toolbar, patientTable, pagination, detailPanel,
+                               actionMenu, patientDialog, toast, tooltip, icons
+  services/patientService.js   Mock async API: list/get/create/update/remove/restore + live feed
+  data/patients.js             Seeded, deterministic, fictional patients
   utils/                       dom.js (escaping html`` templates), format.js, csv.js
+tests/                         node:test suites (CSV export, identity rules)
+docs/                          README screenshots
 ```
 
-Each component is a function that renders into a mount point and returns a small API, such as `update(state)`, `open()` or `setStatus()`. `main.js` owns the single state object and passes data down, while components report user actions through callbacks. Templates are built with an `html` tagged template that **escapes every interpolated value**, so user-entered names can't inject markup.
+Each component renders into a mount point and returns a small API, such as `update(state)`, `open()` or `setStatus()`. `main.js` owns the single state object and passes data down, while components report user actions through callbacks.
 
-## Tech choices
+## Known limitations
 
-- **No framework or build step.** The assessment asks for a static page, so native ES modules keep it easy to review and to host on GitHub Pages.
-- **Inter** from Google Fonts, with a system sans-serif fallback stack that includes CJK fonts for 患者管理.
-- **Flags** come from [flagcdn.com](https://flagcdn.com) as images. Emoji flags don't render on Windows.
-- **Avatars** are generated initials, so there are no third-party photos and nothing breaks offline.
-
-## Browser support
-Current Chrome, Edge, Firefox and Safari. The app uses `<dialog>`, `inert`, `structuredClone` and `:focus-visible`.
+- **No backend or persistence.** All data lives in memory and resets on reload. The service imitates latency and failures, but there is no real API, authentication or authorisation.
+- **No automated UI tests.** Browser behaviour (focus management, overlays, responsive layout) was verified manually and with ad hoc browser scripts. Those scripts are not part of the repository.
+- **Screen readers are untested** (see *Accessibility*).
+- **Real-time updates are simulated** with a timer, not a WebSocket.
+- **Desktop sorting:** once a column header has been clicked, the default "newest registered" order can only be restored by reloading (or with the mobile Sort by select). There is no Registered column to sort by.
+- **External assets:** fonts and flag images load from Google Fonts and flagcdn.com.
+- **CSV apostrophe:** formula-protected values, including `+` phone numbers, keep a visible leading `'` in some spreadsheet apps. This is the deliberate cost of not exempting any column from formula protection.
+- Only the Patient module is implemented. The other navigation items are placeholders.
